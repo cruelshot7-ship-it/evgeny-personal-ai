@@ -1,4 +1,5 @@
 import { completeCurrentStage, createOrder, currentStage, getOrder, listOpenOrders, OrderError } from "./orders.js";
+import { completeTask, createTask, parseMinskDateTime } from "./tasks.js";
 
 const TZ = "Europe/Minsk";
 
@@ -8,6 +9,8 @@ export const HELP = [
   "/list — открытые заказы",
   "/order 3 — карточка заказа №3",
   "/done 3 — отметить текущий этап заказа №3 выполненным",
+  "/call 3 2026-10-12 10:00 позвонить, уточнить размеры — задача с напоминанием (время по Минску)",
+  "/tdone 5 — отметить задачу №5 выполненной (только исполнителю)",
 ].join("\n");
 
 function fmt(iso) {
@@ -69,6 +72,18 @@ export function handle(db, text, { userId, now = new Date() }) {
       const id = parseId(rest);
       const { stage, closed } = completeCurrentStage(db, id, { userId, now });
       return closed ? `Этап «${stage}» выполнен. Заказ №${id} закрыт.` : `Этап «${stage}» выполнен. Смотрите /order ${id}.`;
+    }
+    if (cmd === "/call") {
+      const [idText, date, time, ...title] = rest.split(/\s+/);
+      const orderId = parseId(idText);
+      const dueAt = parseMinskDateTime(date, time);
+      const id = createTask(db, { orderId, title: title.join(" "), dueAt, assigneeId: userId, now });
+      return `Задача №${id} поставлена на ${date} ${time} (Минск). Напомню вам в срок.`;
+    }
+    if (cmd === "/tdone") {
+      const id = parseId(rest);
+      completeTask(db, id, { userId, now });
+      return `Задача №${id} выполнена.`;
     }
     return HELP;
   } catch (err) {

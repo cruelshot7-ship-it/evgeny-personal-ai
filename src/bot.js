@@ -5,6 +5,7 @@
  */
 import { openDb } from "./db.js";
 import { handle } from "./commands.js";
+import { sendDueTasks } from "./reminders.js";
 
 const token = process.env.BOT_TOKEN;
 if (!token) {
@@ -54,5 +55,13 @@ async function loop() {
     }
   }
 }
+
+// напоминания о сроках: проверка раз в минуту
+setInterval(() => {
+  sendDueTasks(db, {
+    now: new Date(),
+    send: (chatId, text) => call("sendMessage", { chat_id: chatId, text }),
+  }).catch((err) => console.error("[reminders]", err.message));
+}, 60_000);
 
 loop();

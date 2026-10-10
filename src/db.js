@@ -24,6 +24,19 @@ const MIGRATIONS = [
     unique (order_id, position)
   );
   `,
+  `
+  create table tasks (
+    id integer primary key autoincrement,
+    order_id integer not null references orders(id),
+    title text not null,
+    due_at text not null,
+    assignee_id text not null,
+    created_at text not null,
+    reminded_at text,
+    done_at text
+  );
+  create index tasks_due on tasks (done_at, reminded_at, due_at);
+  `,
 ];
 
 export function openDb(path) {
