@@ -1,5 +1,6 @@
 import { createHmac } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { test } from "node:test";
+import assert from "node:assert/strict";
 import { verifyInitData } from "./telegram-auth";
 
 const TOKEN = "123456:TEST_TOKEN_ONLY_FOR_TESTS";
@@ -19,32 +20,28 @@ function makeInitData(fields: Record<string, string>, token = TOKEN): string {
 const user = JSON.stringify({ id: 8144320404, first_name: "Евгений" });
 const fresh = String(Math.floor(NOW.getTime() / 1000) - 60);
 
-describe("verifyInitData", () => {
-  it("принимает подписанные данные и возвращает пользователя", () => {
-    const init = makeInitData({ auth_date: fresh, user });
-    expect(verifyInitData(init, TOKEN, NOW)).toEqual({ id: 8144320404, first_name: "Евгений" });
-  });
+test("принимает подписанные данные и возвращает пользователя", () => {
+  const init = makeInitData({ auth_date: fresh, user });
+  assert.deepEqual(verifyInitData(init, TOKEN, NOW), { id: 8144320404, first_name: "Евгений" });
+});
 
-  it("отклоняет подмену поля", () => {
-    const init = makeInitData({ auth_date: fresh, user });
-    const tampered = init.replace("8144320404", "999");
-    expect(verifyInitData(tampered, TOKEN, NOW)).toBeNull();
-  });
+test("отклоняет подмену поля", () => {
+  const init = makeInitData({ auth_date: fresh, user });
+  assert.equal(verifyInitData(init.replace("8144320404", "999"), TOKEN, NOW), null);
+});
 
-  it("отклоняет чужой токен бота", () => {
-    const init = makeInitData({ auth_date: fresh, user });
-    expect(verifyInitData(init, "999:OTHER", NOW)).toBeNull();
-  });
+test("отклоняет чужой токен бота", () => {
+  const init = makeInitData({ auth_date: fresh, user });
+  assert.equal(verifyInitData(init, "999:OTHER", NOW), null);
+});
 
-  it("отклоняет устаревшие данные", () => {
-    const old = String(Math.floor(NOW.getTime() / 1000) - 2 * 86_400);
-    const init = makeInitData({ auth_date: old, user });
-    expect(verifyInitData(init, TOKEN, NOW)).toBeNull();
-  });
+test("отклоняет устаревшие данные", () => {
+  const old = String(Math.floor(NOW.getTime() / 1000) - 2 * 86_400);
+  assert.equal(verifyInitData(makeInitData({ auth_date: old, user }), TOKEN, NOW), null);
+});
 
-  it("отклоняет запрос без hash, пустой токен и пустые данные", () => {
-    expect(verifyInitData(`auth_date=${fresh}&user=${encodeURIComponent(user)}`, TOKEN, NOW)).toBeNull();
-    expect(verifyInitData(makeInitData({ auth_date: fresh, user }), "", NOW)).toBeNull();
-    expect(verifyInitData("", TOKEN, NOW)).toBeNull();
-  });
+test("отклоняет запрос без hash, пустой токен и пустые данные", () => {
+  assert.equal(verifyInitData(`auth_date=${fresh}&user=${encodeURIComponent(user)}`, TOKEN, NOW), null);
+  assert.equal(verifyInitData(makeInitData({ auth_date: fresh, user }), "", NOW), null);
+  assert.equal(verifyInitData("", TOKEN, NOW), null);
 });

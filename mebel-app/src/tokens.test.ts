@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { test } from "node:test";
+import assert from "node:assert/strict";
 
 const css = readFileSync(new URL("./styles/tokens.css", import.meta.url), "utf8");
 
@@ -18,14 +19,12 @@ const SAGE: Record<string, string> = {
   "color-muted-foreground": "#9a958a",
 };
 
-describe("палитра шалфея", () => {
-  for (const [name, value] of Object.entries(SAGE)) {
-    it(`--${name} = ${value}`, () => {
-      expect(token(name)).toBe(value);
-    });
-  }
-
-  it("циан фракции сюда не попал", () => {
-    expect(css).not.toMatch(/#45d4e4|#15171b|#e8382f/i);
+for (const [name, value] of Object.entries(SAGE)) {
+  test(`--${name} = ${value}`, () => {
+    assert.equal(token(name), value);
   });
+}
+
+test("циан фракции сюда не попал", () => {
+  assert.doesNotMatch(css, /#45d4e4|#15171b|#e8382f/i);
 });

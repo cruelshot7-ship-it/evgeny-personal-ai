@@ -1,10 +1,15 @@
-import { STAGES, STAGE_ROLE } from "./stages";
+import { createFileRoute } from "@tanstack/react-router";
+import { STAGES, STAGE_ROLE } from "../stages";
+
+export const Route = createFileRoute("/")({
+  component: OrdersBoard,
+});
 
 /**
  * Доска заказов: колонка на каждый этап. Данных пока нет (база подключается на следующем шаге),
  * поэтому каждая колонка показывает пустое состояние, а не выдуманные заказы.
  */
-export default function App() {
+function OrdersBoard() {
   return (
     <main className="screen">
       <header className="screen__header">

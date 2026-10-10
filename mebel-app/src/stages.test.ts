@@ -1,14 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { test } from "node:test";
+import assert from "node:assert/strict";
 import { STAGES, STAGE_ROLE } from "./stages";
 
-describe("этапы заказа", () => {
-  it("идут в порядке замер → монтаж", () => {
-    expect([...STAGES]).toEqual(["замер", "дизайн", "раскрой", "сборка", "монтаж"]);
-  });
+test("этапы идут в порядке замер → монтаж", () => {
+  assert.deepEqual([...STAGES], ["замер", "дизайн", "раскрой", "сборка", "монтаж"]);
+});
 
-  it("у каждого этапа есть роль", () => {
-    for (const stage of STAGES) {
-      expect(STAGE_ROLE[stage]).toBeTruthy();
-    }
-  });
+test("у каждого этапа есть роль", () => {
+  for (const stage of STAGES) {
+    assert.ok(STAGE_ROLE[stage], `нет роли у ${stage}`);
+  }
 });
