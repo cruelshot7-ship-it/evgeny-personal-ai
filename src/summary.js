@@ -53,11 +53,17 @@ export function getKv(db, key) {
 }
 
 /**
- * Шлёт сводку руководителю один раз в день, после atHour:atMinute по Минску.
- * Дата отмечается до отправки: перезапуск бота не пришлёт сводку второй раз.
+ * Шлёт сводку руководителям один раз в день, после atHour:atMinute по Минску.
+ * directorId — один ID или несколько через запятую.
+ * Дата отмечается до отправки: перезапуск бота не пришлёт сводку второй раз,
+ * и если одному получателю отправка не удалась, повтора не будет.
  */
 export async function sendDailySummary(db, { now = new Date(), send, directorId, atHour = 8, atMinute = 30 }) {
-  if (!directorId) return false;
+  const ids = String(directorId ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (ids.length === 0) return false;
   const { dateKey, hour, minute } = minskParts(now);
   if (hour * 60 + minute < atHour * 60 + atMinute) return false;
   const claimed = db
@@ -66,11 +72,15 @@ export async function sendDailySummary(db, { now = new Date(), send, directorId,
     )
     .run(dateKey);
   if (claimed.changes !== 1) return false;
-  try {
-    await send(String(directorId), buildSummary(db, now));
-    return true;
-  } catch (err) {
-    console.error("[summary] не отправлено", err.message);
-    return false;
+  const text = buildSummary(db, now);
+  let sent = 0;
+  for (const id of ids) {
+    try {
+      await send(id, text);
+      sent += 1;
+    } catch (err) {
+      console.error("[summary] не отправлено", id, err.message);
+    }
   }
+  return sent > 0;
 }

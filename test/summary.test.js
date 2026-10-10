@@ -57,6 +57,25 @@ test("сводка уходит директору один раз в день, 
   assert.equal(await sendDailySummary(db, { now: at("2026-10-11T05:30:00Z"), send, directorId: "7" }), true, "на следующий день снова");
 });
 
+test("несколько получателей через запятую: каждый получает, сбой одного не мешает другому", async () => {
+  const db = setup();
+  const sent = [];
+  const send = async (chatId, text) => {
+    if (chatId === "7") throw new Error("Telegram 500");
+    sent.push(chatId);
+  };
+  const silent = console.error;
+  console.error = () => {};
+  try {
+    const ok = await sendDailySummary(db, { now: new Date("2026-10-10T06:00:00Z"), send, directorId: "7, 813824021" });
+    assert.equal(ok, true, "хотя бы одному отправлено");
+  } finally {
+    console.error = silent;
+  }
+  assert.deepEqual(sent, ["813824021"]);
+  assert.equal(await sendDailySummary(db, { now: new Date("2026-10-10T07:00:00Z"), send, directorId: "7, 813824021" }), false, "в тот же день повтора нет");
+});
+
 test("без DIRECTOR_ID сводка не отправляется", async () => {
   const db = setup();
   assert.equal(await sendDailySummary(db, { now: new Date("2026-10-10T06:00:00Z"), send: async () => {}, directorId: "" }), false);
