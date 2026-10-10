@@ -1,11 +1,13 @@
 /**
  * Telegram-бот: long polling через Bot API (без внешних библиотек).
  * Переменные окружения: BOT_TOKEN (обязательно), ALLOWED_IDS (Telegram ID через запятую),
- * DB_PATH (по умолчанию ./data/orders.db). Токен в код не пишем.
+ * DB_PATH (по умолчанию ./data/orders.db), DIRECTOR_ID (получает утреннюю сводку в 08:30 по Минску).
+ * Токен в код не пишем.
  */
 import { openDb } from "./db.js";
 import { handle } from "./commands.js";
 import { sendDueTasks } from "./reminders.js";
+import { sendDailySummary } from "./summary.js";
 
 const token = process.env.BOT_TOKEN;
 if (!token) {
@@ -45,7 +47,7 @@ async function loop() {
         if (!msg?.text || !msg.from) continue;
         const userId = String(msg.from.id);
         const text = allowed.has(userId)
-          ? handle(db, msg.text, { userId, now: new Date() })
+          ? handle(db, msg.text, { userId, userName: msg.from.first_name ?? "", now: new Date() })
           : "Нет доступа. Попросите директора добавить ваш ID.";
         await call("sendMessage", { chat_id: msg.chat.id, text });
       }
@@ -56,12 +58,15 @@ async function loop() {
   }
 }
 
-// напоминания о сроках: проверка раз в минуту
+const send = (chatId, text) => call("sendMessage", { chat_id: chatId, text });
+
+// напоминания о сроках и утренняя сводка руководителю: проверка раз в минуту
 setInterval(() => {
-  sendDueTasks(db, {
-    now: new Date(),
-    send: (chatId, text) => call("sendMessage", { chat_id: chatId, text }),
-  }).catch((err) => console.error("[reminders]", err.message));
+  const now = new Date();
+  sendDueTasks(db, { now, send }).catch((err) => console.error("[reminders]", err.message));
+  sendDailySummary(db, { now, send, directorId: process.env.DIRECTOR_ID }).catch((err) =>
+    console.error("[summary]", err.message),
+  );
 }, 60_000);
 
 loop();

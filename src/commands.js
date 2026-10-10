@@ -40,7 +40,7 @@ export function formatCard(order) {
  * Разбор одного сообщения и ответ. Ничего не пишет в Telegram: только возвращает текст.
  * userId — Telegram ID отправителя (нужен, чтобы записать, кто отметил этап).
  */
-export function handle(db, text, { userId, now = new Date() }) {
+export function handle(db, text, { userId, userName = "", now = new Date() }) {
   const raw = String(text ?? "").trim();
   const [first = ""] = raw.split(/\s+/);
   const cmd = first.toLowerCase().split("@")[0];
@@ -77,7 +77,7 @@ export function handle(db, text, { userId, now = new Date() }) {
       const [idText, date, time, ...title] = rest.split(/\s+/);
       const orderId = parseId(idText);
       const dueAt = parseMinskDateTime(date, time);
-      const id = createTask(db, { orderId, title: title.join(" "), dueAt, assigneeId: userId, now });
+      const id = createTask(db, { orderId, title: title.join(" "), dueAt, assigneeId: userId, assigneeName: userName, now });
       return `Задача №${id} поставлена на ${date} ${time} (Минск). Напомню вам в срок.`;
     }
     if (cmd === "/tdone") {

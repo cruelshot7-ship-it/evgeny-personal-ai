@@ -20,7 +20,7 @@ export function parseMinskDateTime(dateStr, timeStr) {
 }
 
 /** Задача к заказу: исполнитель, срок, текст. Напоминание придёт исполнителю в срок. */
-export function createTask(db, { orderId, title, dueAt, assigneeId, now = new Date() }) {
+export function createTask(db, { orderId, title, dueAt, assigneeId, assigneeName = "", now = new Date() }) {
   const order = getOrder(db, orderId);
   if (!order) throw new OrderError(`Заказа №${orderId} нет.`);
   if (order.closed_at) throw new OrderError(`Заказ №${orderId} закрыт, задачи к нему не ставим.`);
@@ -28,8 +28,8 @@ export function createTask(db, { orderId, title, dueAt, assigneeId, now = new Da
   if (text.length < 3 || text.length > 200) throw new OrderError("Текст задачи: от 3 до 200 символов.");
   if (new Date(dueAt).getTime() < now.getTime()) throw new OrderError("Срок уже прошёл. Укажите время в будущем.");
   const res = db
-    .prepare("insert into tasks (order_id, title, due_at, assignee_id, created_at) values (?, ?, ?, ?, ?)")
-    .run(orderId, text, dueAt, String(assigneeId), now.toISOString());
+    .prepare("insert into tasks (order_id, title, due_at, assignee_id, assignee_name, created_at) values (?, ?, ?, ?, ?, ?)")
+    .run(orderId, text, dueAt, String(assigneeId), String(assigneeName).slice(0, 80), now.toISOString());
   return Number(res.lastInsertRowid);
 }
 

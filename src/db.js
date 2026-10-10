@@ -37,6 +37,13 @@ const MIGRATIONS = [
   );
   create index tasks_due on tasks (done_at, reminded_at, due_at);
   `,
+  `
+  alter table tasks add column assignee_name text not null default '';
+  create table kv (
+    key text primary key,
+    value text not null
+  );
+  `,
 ];
 
 export function openDb(path) {
