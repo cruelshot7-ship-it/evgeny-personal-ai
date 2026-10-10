@@ -1,0 +1,12 @@
+{
+  "name": "ruksha-mebel-bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Рукша Мебель: трекинг заказов и задач в Telegram",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "start": "node src/bot.js"
+  }
+}
