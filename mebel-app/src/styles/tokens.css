@@ -1,0 +1,30 @@
+/*
+ * Палитра «шалфей» — состояние fraktsiya PR #102 (67d4d7f, src/styles/ds-schedule.css).
+ * Значения менять только здесь. Тест src/tokens.test.ts фиксирует их.
+ */
+:root {
+  --font-sans: "Golos Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Oswald", "Arial Narrow", "Helvetica Neue", Impact, sans-serif;
+  --color-background: #131211;
+  --color-foreground: #f2eee6;
+  --color-card: #1a1917;
+  --color-card-foreground: #f2eee6;
+  --color-popover: #22211e;
+  --color-popover-foreground: #f2eee6;
+  --color-primary: #dd332a;
+  --color-primary-foreground: #ffffff;
+  --color-primary-dim: rgb(221 51 42 / 0.14);
+  --color-secondary: #24231f;
+  --color-secondary-foreground: #f2eee6;
+  --color-muted: #24231f;
+  --color-muted-foreground: #9a958a;
+  --color-accent: #24231f;
+  --color-accent-foreground: #f2eee6;
+  --color-destructive: #dd332a;
+  --color-border: rgb(242 238 230 / 0.08);
+  --color-input: rgb(242 238 230 / 0.1);
+  --color-ring: #8bcfa3;
+  --color-ok: #8bcfa3;
+  --color-ok-foreground: #131211;
+  --color-ok-dim: rgb(139 207 163 / 0.13);
+}
