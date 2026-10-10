@@ -1,0 +1,52 @@
+/* Доска этапов: горизонтальная прокрутка внутри доски, страница не скроллится вбок. */
+.board {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 8px;
+  margin: 0 -16px;
+  padding-left: 16px;
+  padding-right: 16px;
+  scrollbar-width: none;
+}
+
+.board::-webkit-scrollbar {
+  display: none;
+}
+
+.column {
+  flex: 0 0 min(72vw, 240px);
+  scroll-snap-align: start;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--color-card);
+  box-shadow: 0 0 0 1px var(--color-border);
+  min-height: 160px;
+}
+
+.column__header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 12px;
+}
+
+.column__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
+}
+
+.column__role {
+  color: var(--color-muted-foreground);
+  font-size: 0.8rem;
+}
+
+.column__empty {
+  margin: 0;
+  color: var(--color-muted-foreground);
+  font-size: 0.9rem;
+}
