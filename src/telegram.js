@@ -1,0 +1,36 @@
+import { handle } from "./commands.js";
+
+/** Вызов метода Bot API. base нужен, чтобы в тестах указать локальную заглушку вместо api.telegram.org. */
+export function makeApi(token, base = "https://api.telegram.org") {
+  const root = `${base}/bot${token}`;
+  return async function call(method, body) {
+    const res = await fetch(`${root}/${method}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(65_000),
+    });
+    return res.json();
+  };
+}
+
+/**
+ * Один проход опроса: забирает новые сообщения, отвечает на каждое.
+ * state.offset продвигается по update_id, чтобы сообщение не пришло дважды.
+ * Пустой allowed — никому нет доступа.
+ */
+export async function pollOnce({ call, db, allowed, state, now = () => new Date(), timeout = 50 }) {
+  const data = await call("getUpdates", { offset: state.offset, timeout, allowed_updates: ["message"] });
+  const updates = data.result ?? [];
+  for (const update of updates) {
+    state.offset = update.update_id + 1;
+    const msg = update.message;
+    if (!msg?.text || !msg.from) continue;
+    const userId = String(msg.from.id);
+    const text = allowed.has(userId)
+      ? handle(db, msg.text, { userId, userName: msg.from.first_name ?? "", now: now() })
+      : "Нет доступа. Попросите директора добавить ваш ID.";
+    await call("sendMessage", { chat_id: msg.chat.id, text });
+  }
+  return updates.length;
+}

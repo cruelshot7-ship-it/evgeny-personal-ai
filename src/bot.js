@@ -5,7 +5,7 @@
  * Токен в код не пишем.
  */
 import { openDb } from "./db.js";
-import { handle } from "./commands.js";
+import { makeApi, pollOnce } from "./telegram.js";
 import { sendDueTasks } from "./reminders.js";
 import { sendDailySummary } from "./summary.js";
 
@@ -24,33 +24,13 @@ const allowed = new Set(
 );
 
 const db = openDb(process.env.DB_PATH ?? "./data/orders.db");
-const api = `https://api.telegram.org/bot${token}`;
-let offset = 0;
-
-async function call(method, body) {
-  const res = await fetch(`${api}/${method}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(65_000),
-  });
-  return res.json();
-}
+const call = makeApi(token);
+const state = { offset: 0 };
 
 async function loop() {
   for (;;) {
     try {
-      const data = await call("getUpdates", { offset, timeout: 50, allowed_updates: ["message"] });
-      for (const update of data.result ?? []) {
-        offset = update.update_id + 1;
-        const msg = update.message;
-        if (!msg?.text || !msg.from) continue;
-        const userId = String(msg.from.id);
-        const text = allowed.has(userId)
-          ? handle(db, msg.text, { userId, userName: msg.from.first_name ?? "", now: new Date() })
-          : "Нет доступа. Попросите директора добавить ваш ID.";
-        await call("sendMessage", { chat_id: msg.chat.id, text });
-      }
+      await pollOnce({ call, db, allowed, state });
     } catch (err) {
       console.error("[bot]", err.message);
       await new Promise((r) => setTimeout(r, 3000));
