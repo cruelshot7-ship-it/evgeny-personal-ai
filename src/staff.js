@@ -92,3 +92,27 @@ export function canViewOrder(role, order) {
   const cur = currentStage(order);
   return cur != null && cur.role === role;
 }
+
+/** Активные сотрудники роли. */
+export function usersWithRole(db, role) {
+  return db.prepare("select telegram_id from users where role = ? and active = 1 order by telegram_id").all(role).map((r) => r.telegram_id);
+}
+
+/**
+ * Кому сообщить после закрытия этапа: исполнителям следующего этапа, а если заказ закрыт, директорам.
+ * Сам закрывший не получает сообщение. Возвращает список { to, text }.
+ */
+export function handoffMessages(db, order, { actorId, closed }) {
+  const head = `Заказ №${order.id} · ${order.client_name}`;
+  let recipients;
+  let text;
+  if (closed) {
+    recipients = directorIds(db);
+    text = `${head}: все этапы выполнены, заказ закрыт.`;
+  } else {
+    const next = currentStage(order);
+    recipients = usersWithRole(db, next.role);
+    text = `${head}: теперь ваш этап — «${next.stage}». Карточка: /order ${order.id}`;
+  }
+  return [...new Set(recipients)].filter((id) => id !== String(actorId)).map((to) => ({ to, text }));
+}

@@ -129,3 +129,62 @@ test("отключённый сотрудник теряет доступ сра
     await tg.close();
   }
 });
+
+const to = (tg, id) => tg.sent.filter((m) => String(m.chat_id) === String(id));
+
+test("передача эстафеты: закрыли этап — исполнители следующего получают сообщение, автор и другие роли нет", async () => {
+  const tg = await fakeTelegram([msg(1, 11, "/new Иванов Пётр"), msg(2, 11, "/done 1")]);
+  try {
+    const db = openDb(":memory:");
+    seedUser(db, { id: "11", role: "менеджер" });
+    seedUser(db, { id: "12", role: "дизайнер" });
+    seedUser(db, { id: "13", role: "дизайнер" });
+    seedUser(db, { id: "14", role: "сборщик" });
+    seedUser(db, { id: "15", role: "дизайнер" });
+    db.prepare("update users set active = 0 where telegram_id = '15'").run();
+    await pollOnce({ call: makeApi("TEST", tg.base), db, state: { offset: 0 }, timeout: 0 });
+    for (const id of ["12", "13"]) {
+      assert.equal(to(tg, id).length, 1, `дизайнер ${id} получил одно сообщение`);
+      assert.match(to(tg, id)[0].text, /Заказ №1 · Иванов Пётр: теперь ваш этап — «дизайн»\. Карточка: \/order 1/);
+    }
+    assert.equal(to(tg, "14").length, 0, "сборщик не получает");
+    assert.equal(to(tg, "15").length, 0, "отключённый дизайнер не получает");
+    assert.equal(to(tg, "11").length, 2, "автору только два ответа на свои команды");
+  } finally {
+    await tg.close();
+  }
+});
+
+test("передача эстафеты: закрытый заказ — итог директорам, кроме закрывшего; сбой одного адресата не мешает остальным", async () => {
+  const queue = [msg(1, 42, "/new Иванов Пётр")];
+  const tg = await fakeTelegram(queue);
+  try {
+    const db = openDb(":memory:");
+    seedUser(db, { id: "42", role: "директор" });
+    seedUser(db, { id: "7", role: "директор" });
+    seedUser(db, { id: "8", role: "директор" });
+    const call = makeApi("TEST", tg.base);
+    const state = { offset: 0 };
+    await pollOnce({ call, db, state, timeout: 0 });
+    for (let i = 0; i < 5; i++) queue.push(msg(10 + i, 42, "/done 1"));
+    tg.sent.length = 0;
+    const flaky = async (method, body) => {
+      if (method === "sendMessage" && String(body.chat_id) === "7") throw new Error("blocked");
+      return call(method, body);
+    };
+    const silent = console.error;
+    console.error = () => {};
+    try {
+      await pollOnce({ call: flaky, db, state, timeout: 0 });
+    } finally {
+      console.error = silent;
+    }
+    assert.ok(db.prepare("select closed_at from orders").get().closed_at, "заказ закрыт");
+    assert.equal(to(tg, "7").length, 0, "директору 7 отправка упала");
+    const final = to(tg, "8").filter((m) => /все этапы выполнены, заказ закрыт/.test(m.text));
+    assert.equal(final.length, 1, "директор 8 получил итог, несмотря на сбой у 7");
+    assert.equal(to(tg, "42").filter((m) => /все этапы выполнены/.test(m.text)).length, 0, "закрывший не дублируется");
+  } finally {
+    await tg.close();
+  }
+});

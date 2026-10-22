@@ -1,5 +1,5 @@
 import { completeCurrentStage, createOrder, currentStage, getOrder, listOpenOrders, OrderError } from "./orders.js";
-import { addStaff, canCreateOrders, canViewOrder, listStaff, setStaffActive } from "./staff.js";
+import { addStaff, canCreateOrders, canViewOrder, handoffMessages, listStaff, setStaffActive } from "./staff.js";
 import { DIRECTOR } from "./stages.js";
 import { completeTask, createTask, parseMinskDateTime } from "./tasks.js";
 
@@ -88,8 +88,10 @@ function handleStaff(db, rest, user) {
 /**
  * Разбор одного сообщения и ответ. Ничего не пишет в Telegram: только возвращает текст.
  * user — активный сотрудник { id, name, role }; проверка доступа выполняется до вызова.
+ * outbox — необязательный массив: сюда попадают сообщения другим людям { to, text } (передача этапа).
+ * Отправляет их вызывающий код, после ответа автору.
  */
-export function handle(db, text, { user, now = new Date() }) {
+export function handle(db, text, { user, now = new Date(), outbox = [] }) {
   const raw = String(text ?? "").trim();
   const [first = ""] = raw.split(/\s+/);
   const cmd = first.toLowerCase().split("@")[0];
@@ -119,6 +121,7 @@ export function handle(db, text, { user, now = new Date() }) {
       const id = parseId(rest);
       visibleOrder(db, id, user.role);
       const { stage, closed } = completeCurrentStage(db, id, { userId: user.id, role: user.role, now });
+      outbox.push(...handoffMessages(db, getOrder(db, id), { actorId: user.id, closed }));
       return closed ? `Этап «${stage}» выполнен. Заказ №${id} закрыт.` : `Этап «${stage}» выполнен. Смотрите /order ${id}.`;
     }
     if (cmd === "/call") {

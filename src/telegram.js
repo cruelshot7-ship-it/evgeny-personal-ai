@@ -30,10 +30,19 @@ export async function pollOnce({ call, db, state, now = () => new Date(), timeou
     if (!msg?.text || !msg.from) continue;
     const userId = String(msg.from.id);
     const user = getActiveUser(db, userId);
+    const outbox = [];
     const text = user
-      ? handle(db, msg.text, { user: { ...user, name: user.name || msg.from.first_name || "" }, now: now() })
+      ? handle(db, msg.text, { user: { ...user, name: user.name || msg.from.first_name || "" }, now: now(), outbox })
       : `Нет доступа. Ваш Telegram ID: ${userId}. Пришлите его директору, он добавит вас.`;
     await call("sendMessage", { chat_id: msg.chat.id, text });
+    // Передача этапа: сначала ответ автору, потом уведомления. Сбой одного адресата не мешает остальным и не повторяется.
+    for (const m of outbox) {
+      try {
+        await call("sendMessage", { chat_id: m.to, text: m.text });
+      } catch (err) {
+        console.error("[handoff] не отправлено", m.to, err.message);
+      }
+    }
   }
   return updates.length;
 }
