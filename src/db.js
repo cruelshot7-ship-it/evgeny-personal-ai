@@ -44,6 +44,15 @@ const MIGRATIONS = [
     value text not null
   );
   `,
+  `
+  create table users (
+    telegram_id text primary key,
+    name text not null default '',
+    role text not null,
+    active integer not null default 1 check (active in (0, 1)),
+    created_at text not null
+  );
+  `,
 ];
 
 export function openDb(path) {

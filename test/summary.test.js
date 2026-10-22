@@ -12,7 +12,7 @@ function setup() {
   const db = openDb(":memory:");
   const a = createOrder(db, { clientName: "Иванов Пётр", now: NOW });
   createOrder(db, { clientName: "Петрова Анна", now: NOW });
-  completeCurrentStage(db, a, { userId: "1", now: NOW });
+  completeCurrentStage(db, a, { userId: "1", role: "директор", now: NOW });
   // просрочено: срок 09.10 10:00 Минск
   createTask(db, { orderId: a, title: "вчера звонить", dueAt: "2026-10-09T07:00:00.000Z", assigneeId: "42", assigneeName: "Ирина", now: new Date("2026-10-08T07:00:00Z") });
   // сегодня: срок 10.10 15:00 Минск

@@ -26,7 +26,7 @@ test("новый заказ получает все этапы по порядк
 test("этапы идут строго по очереди: текущий всегда первый невыполненный", () => {
   const db = openDb(":memory:");
   const id = createOrder(db, { clientName: "Иванов Пётр" });
-  assert.deepEqual(completeCurrentStage(db, id, { userId: "1" }), { stage: "замер", closed: false });
+  assert.deepEqual(completeCurrentStage(db, id, { userId: "1", role: "директор" }), { stage: "замер", closed: false });
   assert.equal(currentStage(getOrder(db, id)).stage, "дизайн");
   assert.equal(getOrder(db, id).stages[0].done_by, "1");
 });
@@ -34,9 +34,9 @@ test("этапы идут строго по очереди: текущий вс�
 test("повторная отметка того же этапа не проходит", () => {
   const db = openDb(":memory:");
   const id = createOrder(db, { clientName: "Иванов Пётр" });
-  completeCurrentStage(db, id, { userId: "1" });
+  completeCurrentStage(db, id, { userId: "1", role: "директор" });
   // второй нажавший видит уже следующий этап, а не пропускает ещё один
-  assert.deepEqual(completeCurrentStage(db, id, { userId: "2" }), { stage: "дизайн", closed: false });
+  assert.deepEqual(completeCurrentStage(db, id, { userId: "2", role: "директор" }), { stage: "дизайн", closed: false });
   assert.equal(currentStage(getOrder(db, id)).stage, "раскрой");
 });
 
@@ -44,11 +44,11 @@ test("после последнего этапа заказ закрываетс
   const db = openDb(":memory:");
   const id = createOrder(db, { clientName: "Иванов Пётр" });
   let last;
-  for (let i = 0; i < 5; i++) last = completeCurrentStage(db, id, { userId: "1" });
+  for (let i = 0; i < 5; i++) last = completeCurrentStage(db, id, { userId: "1", role: "директор" });
   assert.equal(last.closed, true);
   assert.ok(getOrder(db, id).closed_at);
   assert.deepEqual(listOpenOrders(db), []);
-  assert.throws(() => completeCurrentStage(db, id, { userId: "1" }), (err) => err instanceof OrderError);
+  assert.throws(() => completeCurrentStage(db, id, { userId: "1", role: "директор" }), (err) => err instanceof OrderError);
 });
 
 test("имя клиента обязательно и разумной длины", () => {
@@ -61,5 +61,18 @@ test("имя клиента обязательно и разумной длин�
 
 test("несуществующий заказ — понятная ошибка", () => {
   const db = openDb(":memory:");
-  assert.throws(() => completeCurrentStage(db, 999, { userId: "1" }), /Заказа №999 нет/);
+  assert.throws(() => completeCurrentStage(db, 999, { userId: "1", role: "директор" }), /Заказа №999 нет/);
+});
+
+test("этап закрывает только его роль или директор, без роли — отказ", () => {
+  const db = openDb(":memory:");
+  const id = createOrder(db, { clientName: "Иванов Пётр" });
+  // текущий этап — замер, его роль менеджер
+  assert.throws(() => completeCurrentStage(db, id, { userId: "5", role: "дизайнер" }), /закрывает менеджер\. Ваша роль: дизайнер/);
+  assert.throws(() => completeCurrentStage(db, id, { userId: "5" }), /Ваша роль: не задана/);
+  assert.equal(currentStage(getOrder(db, id)).stage, "замер", "отказ ничего не отметил");
+  assert.deepEqual(completeCurrentStage(db, id, { userId: "6", role: "менеджер" }), { stage: "замер", closed: false });
+  // теперь очередь дизайнера: менеджер уже не может
+  assert.throws(() => completeCurrentStage(db, id, { userId: "6", role: "менеджер" }), /закрывает дизайнер/);
+  assert.deepEqual(completeCurrentStage(db, id, { userId: "7", role: "дизайнер" }), { stage: "дизайн", closed: false });
 });

@@ -5,6 +5,7 @@ import { openDb } from "../src/db.js";
 import { sendDueTasks } from "../src/reminders.js";
 import { completeTask, createTask, dueTasks, markReminded, parseMinskDateTime } from "../src/tasks.js";
 import { createOrder, OrderError } from "../src/orders.js";
+import { director } from "./helpers.js";
 
 const NOW = new Date("2026-10-10T10:00:00Z");
 
@@ -32,7 +33,7 @@ test("задача с прошедшим сроком и задача к зак�
     () => createTask(db, { orderId, title: "позвонить", dueAt: "2026-10-09T07:00:00.000Z", assigneeId: "1", now: NOW }),
     /Срок уже прошёл/,
   );
-  for (let i = 0; i < 5; i++) handle(db, `/done ${orderId}`, { userId: "1", now: NOW });
+  for (let i = 0; i < 5; i++) handle(db, `/done ${orderId}`, { user: director, now: NOW });
   assert.throws(
     () => createTask(db, { orderId, title: "позвонить", dueAt: "2026-10-12T07:00:00.000Z", assigneeId: "1", now: NOW }),
     /закрыт/,
@@ -87,10 +88,10 @@ test("выполнить задачу может только исполните
 
 test("команды /call и /tdone в боте", () => {
   const { db, orderId } = setup();
-  const ctx = { userId: "42", now: NOW };
+  const ctx = { user: director, now: NOW };
   const reply = handle(db, `/call ${orderId} 2026-10-12 10:00 позвонить уточнить размеры`, ctx);
   assert.match(reply, /Задача №1 поставлена на 2026-10-12 10:00 \(Минск\)/);
   assert.match(handle(db, "/call 1 2026-10-12", ctx), /Срок|Текст задачи/);
   assert.equal(handle(db, "/tdone 1", ctx), "Задача №1 выполнена.");
-  assert.match(handle(db, "/tdone 1", { userId: "42", now: NOW }), /уже выполнена/);
+  assert.match(handle(db, "/tdone 1", ctx), /уже выполнена/);
 });

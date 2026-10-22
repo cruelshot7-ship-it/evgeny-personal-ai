@@ -1,4 +1,4 @@
-import { STAGES, STAGE_ROLE } from "./stages.js";
+import { DIRECTOR, STAGES, STAGE_ROLE } from "./stages.js";
 
 export class OrderError extends Error {}
 
@@ -37,14 +37,18 @@ export function currentStage(order) {
 }
 
 /**
- * Отмечает текущий этап выполненным. Условие в UPDATE не даёт отметить один этап дважды,
+ * Отмечает текущий этап выполненным. Закрыть этап может только роль этапа или директор:
+ * без роли (role не передан) отказ. Условие в UPDATE не даёт отметить один этап дважды,
  * даже если два человека нажали одновременно.
  */
-export function completeCurrentStage(db, id, { userId, now = new Date() }) {
+export function completeCurrentStage(db, id, { userId, role, now = new Date() }) {
   const order = getOrder(db, id);
   if (!order) throw new OrderError(`Заказа №${id} нет.`);
   if (order.closed_at) throw new OrderError(`Заказ №${id} уже закрыт.`);
   const stage = currentStage(order);
+  if (role !== DIRECTOR && role !== stage.role) {
+    throw new OrderError(`Этап «${stage.stage}» закрывает ${stage.role}. Ваша роль: ${role ?? "не задана"}.`);
+  }
   db.exec("begin");
   try {
     const res = db
